@@ -22,7 +22,10 @@ SRC = \
 COMPATSRC = \
 	reallocarray.c\
 	strlcat.c\
-	strlcpy.c
+	strlcpy.c\
+	md4c.c\
+	md4c-html.c\
+	entity.c
 BIN = \
 	stagit\
 	stagit-index
@@ -37,7 +40,10 @@ HDR = compat.h
 COMPATOBJ = \
 	reallocarray.o\
 	strlcat.o\
-	strlcpy.o
+	strlcpy.o\
+	md4c.o\
+	md4c-html.o\
+	entity.o
 
 OBJ = ${SRC:.c=.o} ${COMPATOBJ}
 

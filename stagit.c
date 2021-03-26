@@ -13,6 +13,7 @@
 #include <unistd.h>
 
 #include <git2.h>
+#include <md4c-html.h>
 
 #include "compat.h"
 
@@ -488,8 +489,8 @@ writeheader(FILE *fp, const char *title)
 		fprintf(fp, " | <a href=\"%sfile/%s.html\">Submodules</a>",
 		        relpath, submodules);
 	if (readme)
-		fprintf(fp, " | <a href=\"%sfile/%s.html\">README</a>",
-		        relpath, readme);
+		fprintf(fp, " | <a href=\"%s%s.html\">README</a>",
+		        relpath, "readme");
 	if (license)
 		fprintf(fp, " | <a href=\"%sfile/%s.html\">LICENSE</a>",
 		        relpath, license);
@@ -1130,6 +1131,12 @@ usage(char *argv0)
 	exit(1);
 }
 
+void
+process_output_md(const char* text, unsigned int size, void* fp)
+{
+	fprintf((FILE *)fp, "%.*s", size, text);
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -1140,7 +1147,7 @@ main(int argc, char *argv[])
 	char path[PATH_MAX], repodirabs[PATH_MAX + 1], *p;
 	char tmppath[64] = "cache.XXXXXXXXXXXX", buf[BUFSIZ];
 	size_t n;
-	int i, fd;
+	int i, fd, r;
 
 	for (i = 1; i < argc; i++) {
 		if (argv[i][0] != '-') {
@@ -1252,6 +1259,7 @@ main(int argc, char *argv[])
 		if (!git_revparse_single(&obj, repo, readmefiles[i]) &&
 		    git_object_type(obj) == GIT_OBJ_BLOB)
 			readme = readmefiles[i] + strlen("HEAD:");
+            r = i;
 		git_object_free(obj);
 	}
 
@@ -1259,6 +1267,29 @@ main(int argc, char *argv[])
 	    git_object_type(obj) == GIT_OBJ_BLOB)
 		submodules = ".gitmodules";
 	git_object_free(obj);
+
+    /* rendered README page */
+    if (readme) {
+    	fp = efopen("readme.html", "w");
+        writeheader(fp, "README");
+    	git_revparse_single(&obj, repo, readmefiles[r]);
+    	const char *s = git_blob_rawcontent((git_blob *)obj);
+    	if (r == 1) {
+    		git_off_t len = git_blob_rawsize((git_blob *)obj);
+    		fputs("<div class=\"md\">", fp);
+    		if (md_html(s, len, process_output_md, fp, MD_FLAG_TABLES | MD_FLAG_TASKLISTS |
+    		    MD_FLAG_PERMISSIVEEMAILAUTOLINKS | MD_FLAG_PERMISSIVEURLAUTOLINKS, 0))
+    			err(1, "error parsing markdown");
+    		fputs("</div>\n", fp);
+    	} else {
+    		fputs("<pre id=\"readme\">", fp);
+    		xmlencode(fp, s, strlen(s));
+    		fputs("</pre>\n", fp);
+    	}
+    	git_object_free(obj);
+    	writefooter(fp);
+    	fclose(fp);
+    }
 
 	/* log for HEAD */
 	fp = efopen("log.html", "w");
