@@ -13,7 +13,7 @@
 #include <unistd.h>
 
 #include <git2.h>
-#include <md4c-html.h>
+#include "md4c-html.h"
 
 #include "compat.h"
 
